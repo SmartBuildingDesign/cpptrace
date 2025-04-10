@@ -103,7 +103,7 @@ namespace libdwarf {
 
     public:
         CPPTRACE_FORCE_NO_INLINE_FOR_PROFILING
-        dwarf_resolver(const std::string& object_path_, optional<skeleton_info> split_ = nullopt)
+        dwarf_resolver(cstring_view object_path_, optional<skeleton_info> split_ = nullopt)
             : object_path(object_path_),
               skeleton(std::move(split_))
         {
@@ -324,7 +324,7 @@ namespace libdwarf {
                     char** dw_srcfiles;
                     Dwarf_Signed dw_filecount;
                     VERIFY(wrap(dwarf_srcfiles, cu_die.get(), &dw_srcfiles, &dw_filecount) == DW_DLV_OK);
-                    it = srcfiles_cache.insert(it, {off, srcfiles{cu_die.dbg, dw_srcfiles, dw_filecount}});
+                    it = srcfiles_cache.emplace_hint(it, off, srcfiles{cu_die.dbg, dw_srcfiles, dw_filecount});
                 }
                 if(file_i < it->second.count()) {
                     // dwarf is using 1-indexing
@@ -1009,7 +1009,7 @@ namespace libdwarf {
         }
     };
 
-    std::unique_ptr<symbol_resolver> make_dwarf_resolver(const std::string& object_path) {
+    std::unique_ptr<symbol_resolver> make_dwarf_resolver(cstring_view object_path) {
         return detail::make_unique<dwarf_resolver>(object_path);
     }
 }

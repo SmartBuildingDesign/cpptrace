@@ -24,6 +24,7 @@ Cpptrace also has a C API, docs [here](docs/c-api.md).
   - [Raw Traces](#raw-traces)
   - [Utilities](#utilities)
   - [Formatting](#formatting)
+    - [Transforms](#transforms)
   - [Configuration](#configuration)
   - [Traces From All Exceptions](#traces-from-all-exceptions)
     - [Removing the `CPPTRACE_` prefix](#removing-the-cpptrace_-prefix)
@@ -37,6 +38,7 @@ Cpptrace also has a C API, docs [here](docs/c-api.md).
   - [Utility Types](#utility-types)
   - [Headers](#headers)
   - [Libdwarf Tuning](#libdwarf-tuning)
+  - [JIT Support](#jit-support)
 - [Supported Debug Formats](#supported-debug-formats)
 - [How to Include The Library](#how-to-include-the-library)
   - [CMake FetchContent](#cmake-fetchcontent)
@@ -139,7 +141,7 @@ include(FetchContent)
 FetchContent_Declare(
   cpptrace
   GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
-  GIT_TAG        v0.8.2 # <HASH or TAG>
+  GIT_TAG        v0.8.3 # <HASH or TAG>
 )
 FetchContent_MakeAvailable(cpptrace)
 target_link_libraries(your_target cpptrace::cpptrace)
@@ -348,6 +350,7 @@ namespace cpptrace {
         formatter& columns(bool);
         formatter& filtered_frame_placeholders(bool);
         formatter& filter(std::function<bool(const stacktrace_frame&)>);
+        formatter& transform(std::function<stacktrace_frame(stacktrace_frame)>);
 
         std::string format(const stacktrace_frame&) const;
         std::string format(const stacktrace_frame&, bool color) const;
@@ -384,6 +387,7 @@ Options:
 | `columns`                     | Whether to include column numbers if present                   | `true`                                                                   |
 | `filtered_frame_placeholders` | Whether to still print filtered frames as just `#n (filtered)` | `true`                                                                   |
 | `filter`                      | A predicate to filter frames with                              | None                                                                     |
+| `transform`                   | A transformer which takes a stacktrace frame and modifies it   | None                                                                     |
 
 The `automatic` color mode attempts to detect if a stream that may be attached to a terminal. As such, it will not use
 colors for the `formatter::format` method and it may not be able to detect if some ostreams correspond to terminals or
@@ -398,6 +402,19 @@ Cpptrace provides access to a formatter with default settings with `get_default_
 namespace cpptrace {
     const formatter& get_default_formatter();
 }
+```
+
+### Transforms
+
+A transform function can be specified for the formatter. This function is called before the configured `filter` is
+checked. For example:
+
+```cpp
+auto formatter = cpptrace::formatter{}
+    .transform([](cpptrace::stacktrace_frame frame) {
+        frame.symbol = replace_all(frame, "std::__cxx11::", "std::");
+        return frame;
+    });
 ```
 
 ## Configuration
@@ -851,6 +868,7 @@ Cpptrace provides a handful of headers to make inclusion more minimal.
 | `cpptrace/formatting.hpp`   | Configurable formatter API                                                                                                                                                                            |
 | `cpptrace/utils.hpp`        | Utility functions, configuration functions, and terminate utilities ([Utilities](#utilities), [Configuration](#configuration), and [Terminate Handling](#terminate-handling))                         |
 | `cpptrace/version.hpp`      | Library version macros                                                                                                                                                                                |
+| `cpptrace/gdb_jit.hpp`      | Provides a special utility related to [JIT support](#jit-support)                                                                                                                                     |
 
 The main cpptrace header is `cpptrace/cpptrace.hpp` which includes everything other than `from_current.hpp` and
 `version.hpp`.
@@ -881,6 +899,46 @@ Explanation:
   table for compile units emitted by many compilers. Cpptrace uses these by default if they are present since they can
   speed up resolution, however, they can also result in significant memory usage.
 
+## JIT Support
+
+Cpptrace has support for resolving symbols from frames in JIT-compiled code. To do this, cpptrace relies on in-memory
+object files (elf on linux or mach-o on mac) that contain symbol tables and dwarf debug information. The main reason for
+this is many JIT implementations already produce these for debugger support.
+
+These in-memory object files must be set up in such a way that the symbol table and debug symbol addresses match the
+run-time addresses of the JIT code.
+
+The basic interface for informing cpptrace about these in-memory object files is as follows:
+
+```cpp
+namespace cpptrace {
+    void register_jit_object(const char*, std::size_t);
+    void unregister_jit_object(const char*);
+    void clear_all_jit_objects();
+}
+```
+
+Many JIT implementations follow the GDB [JIT Compilation Interface][jitci] so that JIT code can be debugged. The
+interface, at a high level, entails adding in-memory object files to a linked list of object files that GDB and other
+debuggers can reference (stored in the `__jit_debug_descriptor`). Cpptrace provides, as a utility, a mechanism for
+loading all in-memory object files present in the `__jit_debug_descriptor` linked list via `<cpptrace/gdb_jit.hpp>`:
+
+```cpp
+namespace cpptrace {
+    namespace experimental {
+        void register_jit_objects_from_gdb_jit_interface();
+    }
+}
+```
+
+Note: Your program must be able to link against a global C symbol `__jit_debug_descriptor`.
+
+Note: Calling `cpptrace::experimental::register_jit_objects_from_gdb_jit_interface` clears all jit objects previously
+registered with cpptrace.
+
+
+[jitci]: https://sourceware.org/gdb/current/onlinedocs/gdb.html/JIT-Interface.html
+
 # Supported Debug Formats
 
 | Format                       | Supported |
@@ -905,7 +963,7 @@ include(FetchContent)
 FetchContent_Declare(
   cpptrace
   GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
-  GIT_TAG        v0.8.2 # <HASH or TAG>
+  GIT_TAG        v0.8.3 # <HASH or TAG>
 )
 FetchContent_MakeAvailable(cpptrace)
 target_link_libraries(your_target cpptrace::cpptrace)
@@ -921,7 +979,7 @@ information.
 
 ```sh
 git clone https://github.com/jeremy-rifkin/cpptrace.git
-git checkout v0.8.2
+git checkout v0.8.3
 mkdir cpptrace/build
 cd cpptrace/build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -964,7 +1022,7 @@ you when installing new libraries.
 
 ```ps1
 git clone https://github.com/jeremy-rifkin/cpptrace.git
-git checkout v0.8.2
+git checkout v0.8.3
 mkdir cpptrace/build
 cd cpptrace/build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -982,7 +1040,7 @@ To install just for the local user (or any custom prefix):
 
 ```sh
 git clone https://github.com/jeremy-rifkin/cpptrace.git
-git checkout v0.8.2
+git checkout v0.8.3
 mkdir cpptrace/build
 cd cpptrace/build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/wherever
@@ -1065,7 +1123,7 @@ make install
 cd ~/scratch/cpptrace-test
 git clone https://github.com/jeremy-rifkin/cpptrace.git
 cd cpptrace
-git checkout v0.8.2
+git checkout v0.8.3
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=On -DCPPTRACE_USE_EXTERNAL_LIBDWARF=On -DCMAKE_PREFIX_PATH=~/scratch/cpptrace-test/resources -DCMAKE_INSTALL_PREFIX=~/scratch/cpptrace-test/resources
@@ -1085,7 +1143,7 @@ cpptrace and its dependencies.
 Cpptrace is available through conan at https://conan.io/center/recipes/cpptrace.
 ```
 [requires]
-cpptrace/0.8.2
+cpptrace/0.8.3
 [generators]
 CMakeDeps
 CMakeToolchain

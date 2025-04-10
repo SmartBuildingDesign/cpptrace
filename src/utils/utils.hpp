@@ -160,15 +160,15 @@ namespace detail {
     }
 
     // shamelessly stolen from stackoverflow
-    bool directory_exists(const std::string& path);
+    bool directory_exists(cstring_view path);
 
-    inline std::string basename(const std::string& path, bool maybe_windows = false) {
+    inline std::string basename(cstring_view path, bool maybe_windows = false) {
         // Assumes no trailing /'s
         auto pos = path.find_last_of(maybe_windows ? "/\\" : "/");
-        if(pos == std::string::npos) {
-            return path;
+        if(pos == cstring_view::npos) {
+            return std::string(path);
         } else {
-            return path.substr(pos + 1);
+            return std::string(path.substr(pos + 1));
         }
     }
 
@@ -194,6 +194,9 @@ namespace detail {
         obj = std::forward<U>(value);
         return old;
     }
+
+    template<typename...>
+    using void_t = void;
 
     struct monostate {};
 
@@ -258,9 +261,14 @@ namespace detail {
 
     using file_wrapper = raii_wrapper<std::FILE*, void(*)(std::FILE*)>;
 
-    template<class T, class... Args>
+    template<typename T, typename... Args>
     auto make_unique(Args&&... args) -> typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type {
         return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+
+    template<typename T>
+    auto make_unique(T&& arg) -> typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type {
+        return std::unique_ptr<T>(new T(std::forward<T>(arg)));
     }
 
     template<typename T>
@@ -275,6 +283,9 @@ namespace detail {
         }
         T& operator*() {
             return *ptr;
+        }
+        T* get() {
+            return ptr;
         }
     };
 

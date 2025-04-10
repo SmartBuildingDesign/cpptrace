@@ -20,7 +20,7 @@
   #include <unistd.h>
   #if IS_APPLE
    #include <mach/mach.h>
-   #ifdef HAS_MACH_VM
+   #ifdef CPPTRACE_HAS_MACH_VM
     #include <mach/mach_vm.h>
    #endif
   #else
@@ -118,7 +118,7 @@ namespace cpptrace {
         #if IS_APPLE
         int get_page_protections(void* page) {
             // https://stackoverflow.com/a/12627784/15675011
-            #ifdef HAS_MACH_VM
+            #ifdef CPPTRACE_HAS_MACH_VM
             mach_vm_size_t vmsize;
             mach_vm_address_t address = (mach_vm_address_t)page;
             #else
@@ -130,7 +130,7 @@ namespace cpptrace {
                 sizeof(size_t) == 8 ? VM_REGION_BASIC_INFO_COUNT_64 : VM_REGION_BASIC_INFO_COUNT;
             memory_object_name_t object;
             kern_return_t status =
-            #ifdef HAS_MACH_VM
+            #ifdef CPPTRACE_HAS_MACH_VM
             mach_vm_region
             #else
             vm_region_64
@@ -272,7 +272,8 @@ namespace cpptrace {
             memcpy(new_vtable_page, type_info_vtable_pointer, vtable_size * sizeof(void*));
             // ninja in the custom __do_catch interceptor
             auto new_vtable = static_cast<void**>(new_vtable_page);
-            new_vtable[6] = reinterpret_cast<void*>(do_catch_function);
+            // double cast is done here because older (and some newer gcc versions) warned about it under -Wpedantic
+            new_vtable[6] = reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(do_catch_function));
             // make the page read-only
             mprotect_page(new_vtable_page, page_size, memory_readonly);
 
