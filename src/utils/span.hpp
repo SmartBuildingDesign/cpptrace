@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     // basic span implementation
     // I haven't implemented most members because I don't need them, more will be added as needed
@@ -82,11 +82,17 @@ namespace detail {
         return {begin, count};
     }
 
-    template<typename T, typename std::enable_if<std::is_trivial<T>::value && !is_span<T>::value, int>::type = 0>
+    template<
+        typename T,
+        typename std::enable_if<
+            std::is_standard_layout<T>::value && is_trivially_copyable<T>::value && !is_span<T>::value,
+            int
+        >::type = 0
+    >
     span<char> make_bspan(T& object) {
         return span<char>(reinterpret_cast<char*>(std::addressof(object)), sizeof(object));
     }
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

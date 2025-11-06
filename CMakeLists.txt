@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.15...4.0)
 
 include(cmake/PreventInSourceBuilds.cmake)
 
@@ -9,7 +9,7 @@ set(package_name "cpptrace")
 
 project(
   cpptrace
-  VERSION 0.8.3
+  VERSION 1.0.4
   DESCRIPTION "Simple, portable, and self-contained stacktrace library for C++11 and newer "
   HOMEPAGE_URL "https://github.com/jeremy-rifkin/cpptrace"
   LANGUAGES C CXX
@@ -122,8 +122,10 @@ target_sources(
     src/exceptions.cpp
     src/from_current.cpp
     src/formatting.cpp
+    src/logging.cpp
     src/options.cpp
     src/utils.cpp
+    src/prune_symbol.cpp
     src/demangle/demangle_with_cxxabi.cpp
     src/demangle/demangle_with_nothing.cpp
     src/demangle/demangle_with_winapi.cpp
@@ -149,16 +151,26 @@ target_sources(
     src/utils/io/memory_file_view.cpp
     src/utils/error.cpp
     src/utils/microfmt.cpp
+    src/utils/replace_all.cpp
     src/utils/string_view.cpp
     src/utils/utils.cpp
     src/platform/dbghelp_utils.cpp
+    src/platform/memory_mapping.cpp
 )
+
+if(HAS_CXX20_MODULES AND CMAKE_VERSION VERSION_GREATER_EQUAL "3.28")
+  target_sources(
+    ${target_name} PUBLIC
+    FILE_SET CXX_MODULES
+    FILES "src/cpptrace.cppm"
+    BASE_DIRS "src"
+  )
+endif()
 
 target_include_directories(
   ${target_name}
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
-  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/cpptrace/>
 )
 
 target_include_directories(

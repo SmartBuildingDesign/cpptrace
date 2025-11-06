@@ -14,7 +14,7 @@
 #include <windows.h>
 #endif
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     #if IS_WINDOWS
     constexpr char PATH_SEP = '\\';
@@ -43,6 +43,6 @@ namespace detail {
     }
     #endif
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

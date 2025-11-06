@@ -17,7 +17,7 @@
  #include <dwarf.h>
 #endif
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
 namespace libdwarf {
     static_assert(std::is_pointer<Dwarf_Die>::value, "Dwarf_Die not a pointer");
@@ -29,7 +29,7 @@ namespace libdwarf {
         Dwarf_Unsigned ev = dwarf_errno(error);
         // dwarf_dealloc_error deallocates the message, attaching to msg is convenient
         auto msg = raii_wrap(dwarf_errmsg(error), [dbg, error] (char*) { dwarf_dealloc_error(dbg, error); });
-        throw internal_error(microfmt::format("dwarf error {} {}", ev, msg.get()));
+        throw internal_error("dwarf error {} {}", ev, msg.get());
     }
 
     struct die_object {
@@ -537,6 +537,6 @@ namespace libdwarf {
     };
 }
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

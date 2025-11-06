@@ -17,7 +17,7 @@
  #define CPPTRACE_PFUNC __extension__ __PRETTY_FUNCTION__
 #endif
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     class internal_error : public std::exception {
         std::string msg;
@@ -62,12 +62,11 @@ namespace detail {
         string_view message = ""
     );
 
-    template<typename T>
-    void nullfn() {
-        // this method doesn't do anything and is never called.
-    }
 
-    #define PHONY_USE(...) (nullfn<decltype(__VA_ARGS__)>())
+    template<typename... Args>
+    void nullfn(Args&&...);
+
+    #define PHONY_USE(...) (static_cast<decltype(nullfn(__VA_ARGS__))>(0))
 
     // Work around a compiler warning
     template<typename T>
@@ -126,7 +125,9 @@ namespace detail {
      // Check condition in both debug. std::runtime_error on failure.
      #define ASSERT(...) PHONY_USE(__VA_ARGS__)
     #endif
+
+    void log_and_maybe_propagate_exception(std::exception_ptr);
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

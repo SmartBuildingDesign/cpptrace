@@ -15,7 +15,7 @@
 #endif
 #include <windows.h>
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     template<typename T, typename std::enable_if<std::is_integral<T>::value, int>::type = 0>
     T pe_byteswap_if_needed(T value) {
@@ -84,7 +84,7 @@ namespace detail {
         } else {
             // 64 bit
             // I get an "error: 'QWORD' was not declared in this scope" for some reason when using QWORD
-            auto bytes = load_bytes<unsigned __int64>(file, nt_header_offset + 0x18 + 0x18); // optional header + 0x18
+            auto bytes = load_bytes<std::uint64_t>(file, nt_header_offset + 0x18 + 0x18); // optional header + 0x18
             if(!bytes) {
                 return std::move(bytes).unwrap_error();
             }
@@ -92,6 +92,6 @@ namespace detail {
         }
     }
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

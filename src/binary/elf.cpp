@@ -19,7 +19,7 @@
 
 #include <elf.h>
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     elf::elf(
         std::unique_ptr<base_file> file,
@@ -168,7 +168,9 @@ namespace detail {
         const auto& sections = sections_res.unwrap_value();
         for(const auto& section : sections) {
             if(string_view(strtab.data() + section.sh_name) == ".text") {
-                vec.push_back(pc_range{section.sh_addr, section.sh_addr + section.sh_size});
+                vec.push_back(
+                    pc_range{to<frame_ptr>(section.sh_addr), to<frame_ptr>(section.sh_addr + section.sh_size)}
+                );
             }
         }
         return vec;
@@ -213,7 +215,7 @@ namespace detail {
 
     template<typename T, typename std::enable_if<std::is_integral<T>::value, int>::type>
     T elf::byteswap_if_needed(T value) {
-        if(cpptrace::detail::is_little_endian() == is_little_endian) {
+        if(detail::is_little_endian() == is_little_endian) {
             return value;
         } else {
             return byteswap(value);
@@ -222,8 +224,7 @@ namespace detail {
 
     Result<const elf::header_info&, internal_error> elf::get_header_info() {
         if(header) {
-            Result<const elf::header_info&, internal_error> r = header.unwrap();
-            return std::ref(header.unwrap());
+            return header.unwrap();
         }
         if(tried_to_load_header) {
             return internal_error("previous header load failed {}", file->path());
@@ -331,7 +332,10 @@ namespace detail {
             return internal_error("requested strtab section not a strtab (requested {} of {})", index, file->path());
         }
         entry.data.resize(section.sh_size + 1);
-        auto read_res = file->read_bytes(span<char>{entry.data.data(), section.sh_size}, section.sh_offset);
+        auto read_res = file->read_bytes(
+            span<char>{entry.data.data(), to<std::size_t>(section.sh_size)},
+            section.sh_offset
+        );
         if(!read_res) {
             return read_res.unwrap_error();
         }
@@ -434,7 +438,14 @@ namespace detail {
                     normalized.st_shndx = byteswap_if_needed(entry.st_shndx);
                     normalized.st_value = byteswap_if_needed(entry.st_value);
                     normalized.st_size = byteswap_if_needed(entry.st_size);
-                    symbol_table.unwrap().entries.push_back(normalized);
+                    // on arm I've observed zero-size symbols that overlap with symbols we care about
+                    // this interferes with some symbol lookup - that could be fixed by enhancing the logic there but
+                    // also it's easy to just exclude zero-size symbols here
+                    //  1413: 00000000000349e0     0 NOTYPE  LOCAL  DEFAULT   13 $x
+                    // 32341: 00000000000349e0   220 FUNC    GLOBAL DEFAULT   13 _Z33stacktrace_from_current_rethrow_3RSt6vectorIiSaIiEE
+                    if(normalized.st_size != 0) {
+                        symbol_table.unwrap().entries.push_back(normalized);
+                    }
                 }
                 std::sort(
                     symbol_table.unwrap().entries.begin(),
@@ -458,7 +469,7 @@ namespace detail {
             return elf::open(object_path)
                 .transform([](elf&& obj) { return maybe_owned<elf>{detail::make_unique<elf>(std::move(obj))}; });
         } else {
-            std::mutex m;
+            static std::mutex m;
             std::unique_lock<std::mutex> lock{m};
             // TODO: Re-evaluate storing the error
             static std::unordered_map<std::string, Result<elf, internal_error>> cache;
@@ -472,6 +483,6 @@ namespace detail {
         }
     }
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

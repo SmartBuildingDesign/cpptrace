@@ -12,7 +12,7 @@
  #include <unistd.h>
 #endif
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
 
     bool isatty(int fd) {
@@ -58,4 +58,4 @@ namespace detail {
     }
 
 }
-}
+CPPTRACE_END_NAMESPACE

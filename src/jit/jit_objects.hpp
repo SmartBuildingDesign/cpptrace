@@ -7,7 +7,7 @@
 #include "utils/optional.hpp"
 #include "platform/platform.hpp"
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     void register_jit_object(const char*, std::size_t);
     void unregister_jit_object(const char*);
@@ -26,6 +26,6 @@ namespace detail {
     optional<jit_object_lookup_result> lookup_jit_object(frame_ptr pc);
     #endif
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

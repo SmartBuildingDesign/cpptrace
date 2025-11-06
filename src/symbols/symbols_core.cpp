@@ -1,5 +1,7 @@
 #include <cpptrace/basic.hpp>
+#include <cpptrace/utils.hpp>
 
+#include "cpptrace/forward.hpp"
 #include "symbols/symbols.hpp"
 
 #include <vector>
@@ -8,7 +10,7 @@
 #include "utils/error.hpp"
 #include "binary/object.hpp"
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     template<typename CollatedVec, typename Entry>
     std::unordered_map<std::string, CollatedVec> collate_frames(
@@ -151,4 +153,4 @@ namespace detail {
         #endif
     }
 }
-}
+CPPTRACE_END_NAMESPACE

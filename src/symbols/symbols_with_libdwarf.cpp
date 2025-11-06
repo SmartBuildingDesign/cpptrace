@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
 namespace libdwarf {
     std::unique_ptr<symbol_resolver> get_resolver_for_object(const std::string& object_path) {
@@ -106,18 +106,16 @@ namespace libdwarf {
         try {
             frame = resolver->resolve_frame(dlframe);
         } catch(...) {
+            detail::log_and_maybe_propagate_exception(std::current_exception());
             frame.frame.raw_address = dlframe.raw_address;
             frame.frame.object_address = dlframe.object_address;
             frame.frame.filename = dlframe.object_path;
-            if(!should_absorb_trace_exceptions()) {
-                throw;
-            }
         }
     }
 
     CPPTRACE_FORCE_NO_INLINE_FOR_PROFILING
     std::vector<stacktrace_frame> resolve_frames(const std::vector<object_frame>& frames) {
-        std::vector<frame_with_inlines> trace(frames.size(), {null_frame, {}});
+        std::vector<frame_with_inlines> trace(frames.size(), {null_frame(), {}});
         // Locking around all libdwarf interaction per https://github.com/davea42/libdwarf-code/discussions/184
         // And also locking for interactions with get_resolver
         static std::mutex mutex;
@@ -154,16 +152,14 @@ namespace libdwarf {
                     #endif
                 }
             } catch(...) { // NOSONAR
-                if(!should_absorb_trace_exceptions()) {
-                    throw;
-                }
+                detail::log_and_maybe_propagate_exception(std::current_exception());
             }
         }
         // fill in basic info for any frames where there were resolution issues
         for(std::size_t i = 0; i < frames.size(); i++) {
             const auto& dlframe = frames[i];
             auto& frame = trace[i];
-            if(frame.frame == null_frame) {
+            if(frame.frame == null_frame()) {
                 frame = {
                     {
                         dlframe.raw_address,
@@ -183,6 +179,6 @@ namespace libdwarf {
     }
 }
 }
-}
+CPPTRACE_END_NAMESPACE
 
 #endif

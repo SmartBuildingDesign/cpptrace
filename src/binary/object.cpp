@@ -3,6 +3,7 @@
 #include "platform/platform.hpp"
 #include "utils/utils.hpp"
 #include "binary/module_base.hpp"
+#include "logging.hpp"
 
 #include <string>
 #include <system_error>
@@ -23,7 +24,7 @@
  #include <windows.h>
 #endif
 
-namespace cpptrace {
+CPPTRACE_BEGIN_NAMESPACE
 namespace detail {
     #if IS_LINUX || IS_APPLE
     #if defined(CPPTRACE_HAS_DL_FIND_OBJECT) || defined(CPPTRACE_HAS_DLADDR1)
@@ -123,7 +124,7 @@ namespace detail {
                 cache.insert(it, {handle, path});
                 return path;
             } else {
-                std::fprintf(stderr, "%s\n", std::system_error(GetLastError(), std::system_category()).what());
+                log::error(std::system_error(GetLastError(), std::system_category()).what());
                 cache.insert(it, {handle, ""});
                 return "";
             }
@@ -155,7 +156,7 @@ namespace detail {
                 }
             }
         } else {
-            std::fprintf(stderr, "%s\n", std::system_error(GetLastError(), std::system_category()).what());
+            log::error(std::system_error(GetLastError(), std::system_category()).what());
         }
         return frame;
     }
@@ -186,4 +187,4 @@ namespace detail {
         };
     }
 }
-}
+CPPTRACE_END_NAMESPACE
