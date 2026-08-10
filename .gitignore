@@ -1,6 +1,7 @@
-.vscode/
-.idea/
 .cache
+.git/
+.idea/
+.vscode/
 
 a.out
 build*/
